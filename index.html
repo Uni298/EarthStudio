@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earth Studio Clone - CesiumJS Keyframe Animation</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%234a9eff'/><circle cx='50' cy='50' r='35' fill='%2300d084'/></svg>">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.112/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.112/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app-container">
+        <!-- Main Viewer -->
+        <div id="cesium-container"></div>
+
+        <!-- Property Panel (Left) -->
+        <div id="property-panel">
+            <div class="panel-header" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>Earth Studio</h3>
+                    <button id="btn-toggle-mask" class="btn-icon" title="動画プレビュー枠">👁️</button>
+                </div>
+                <!-- Project Controls -->
+                <div style="display: flex; gap: 5px;">
+                    <button id="btn-save-project" class="btn-secondary" style="flex: 1; font-size: 12px; padding: 6px;">
+                        <span class="icon">💾</span> プロジェクト保存
+                    </button>
+                    <button id="btn-load-project" class="btn-secondary" style="flex: 1; font-size: 12px; padding: 6px;">
+                        <span class="icon">📂</span> 開く
+                    </button>
+                    <input type="file" id="input-load-project" accept=".json" style="display: none;">
+                </div>
+
+                <!-- Export Button -->
+                <button id="btn-export" class="btn-primary" style="width: 100%;">
+                    <span class="icon">🎬</span> エクスポート
+                </button>
+            </div>
+            <div class="scroll-content">
+                <div class="property-section">
+                    <h4>キーフレーム設定</h4>
+                    <div class="property-group">
+                        <label>緯度 (Latitude)</label>
+                        <input type="number" id="input-latitude" step="0.0001" value="35.6762">
+                        <span class="unit">°</span>
+                    </div>
+                    <div class="property-group">
+                        <label>経度 (Longitude)</label>
+                        <input type="number" id="input-longitude" step="0.0001" value="139.6503">
+                        <span class="unit">°</span>
+                    </div>
+                    <div class="property-group">
+                        <label>高度 (Height)</label>
+                        <input type="number" id="input-height" step="100" value="10000">
+                        <span class="unit">m</span>
+                    </div>
+                </div>
+
+                <div class="property-section">
+                    <h4>向き</h4>
+                    <div class="property-group">
+                        <label>回転 (Heading / Z軸)</label>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="range" id="input-heading-slider" min="-180" max="180" value="0"
+                                style="flex: 1;">
+                            <input type="number" id="input-heading" step="1" min="-180" max="180" value="0"
+                                style="width: 60px;">
+                        </div>
+                        <span class="unit">°</span>
+                    </div>
+                    <div class="property-group">
+                        <label>ピッチ (Pitch / X軸)</label>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="range" id="input-pitch-slider" min="-90" max="0" value="-45" style="flex: 1;">
+                            <input type="number" id="input-pitch" step="1" min="-90" max="0" value="-45"
+                                style="width: 60px;">
+                        </div>
+                        <span class="unit">°</span>
+                    </div>
+                    <div class="property-group">
+                        <label>ズーム (Zoom / Y軸)</label>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="range" id="input-fov" min="10" max="120" value="60" style="flex: 1;">
+                            <span class="value" id="fov-value" style="width: 40px; text-align: right;">60°</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="property-section">
+                    <h4>カメラ</h4>
+                    <!-- FOV moved to above -->
+                </div>
+
+                <div class="property-section">
+                    <h4>補間</h4>
+                    <div class="property-group">
+                        <label>アニメーション種類</label>
+                        <select id="select-interpolation">
+                            <option value="linear">リニア (Linear)</option>
+                            <option value="easeIn">イーズイン (Ease In)</option>
+                            <option value="easeOut">イーズアウト (Ease Out)</option>
+                            <option value="easeInOut" selected>イーズインアウト (Ease In-Out)</option>
+                            <option value="bezier">ベジェ (Bezier)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="property-actions">
+                    <button id="btn-add-keyframe" class="btn-success">
+                        <span class="icon">➕</span> キーフレーム追加
+                    </button>
+                    <button id="btn-update-keyframe" class="btn-primary" disabled>
+                        <span class="icon">💾</span> 更新
+                    </button>
+                    <button id="btn-delete-keyframe" class="btn-danger" disabled>
+                        <span class="icon">🗑️</span> 削除
+                    </button>
+                </div>
+            </div> <!-- End scroll-content -->
+        </div>
+
+        <!-- Timeline Panel (Bottom) -->
+        <div id="timeline-panel" class="panel">
+            <div class="timeline-header">
+                <div class="playback-controls">
+                    <button id="btn-play" class="btn-icon" title="再生">▶️</button>
+                    <button id="btn-pause" class="btn-icon" title="一時停止" disabled>⏸️</button>
+                    <button id="btn-stop" class="btn-icon" title="停止">⏹️</button>
+                    <button id="btn-step-back" class="btn-icon" title="前のフレーム">⏮️</button>
+                    <button id="btn-step-forward" class="btn-icon" title="次のフレーム">⏭️</button>
+                </div>
+                <div class="time-display">
+                    <span id="current-time">00:00.000</span> / <span id="total-time">00:10.000</span>
+                </div>
+                <div class="timeline-settings">
+                    <label>FPS:</label>
+                    <select id="select-fps">
+                        <option value="24">24</option>
+                        <option value="30" selected>30</option>
+                        <option value="60">60</option>
+                    </select>
+                    <label>長さ:</label>
+                    <input type="number" id="input-duration" min="1" max="300" value="10" step="1">
+                    <span>秒</span>
+                </div>
+            </div>
+            <div class="timeline-container">
+                <canvas id="timeline-canvas"></canvas>
+            </div>
+            <!-- Scrollbar removed for fit-to-view mode -->
+            <div class="progress-container">
+                <input type="range" id="progress-slider" min="0" max="1000" value="0" step="1">
+            </div>
+        </div>
+
+        <!-- Export Dialog -->
+        <div id="export-dialog" class="dialog" style="display: none;">
+            <div class="dialog-content">
+                <div class="dialog-header">
+                    <h3>動画エクスポート設定</h3>
+                    <button id="btn-close-dialog" class="btn-close">✖️</button>
+                </div>
+                <div class="dialog-body">
+                    <div class="property-group">
+                        <label>解像度</label>
+                        <select id="export-resolution">
+                            <option value="1920x1080" selected>1920x1080 (Full HD)</option>
+                            <option value="1280x720">1280x720 (HD)</option>
+                            <option value="3840x2160">3840x2160 (4K)</option>
+                        </select>
+                    </div>
+                    <div class="property-group">
+                        <label>フレームレート</label>
+                        <select id="export-fps">
+                            <option value="24">24 FPS</option>
+                            <option value="30" selected>30 FPS</option>
+                            <option value="60">60 FPS</option>
+                        </select>
+                    </div>
+                    <div class="property-group">
+                        <label>品質</label>
+                        <select id="export-quality">
+                            <option value="high" selected>高品質</option>
+                            <option value="medium">中品質</option>
+                            <option value="low">低品質</option>
+                        </select>
+                    </div>
+                    <div id="export-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div id="export-progress-fill" class="progress-fill"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span id="export-status">準備中...</span>
+                            <span id="export-percentage">0%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dialog-footer">
+                    <button id="btn-start-export" class="btn-primary">エクスポート開始</button>
+                    <button id="btn-server-export" class="btn-primary"
+                        style="background: linear-gradient(135deg, #7b61ff, #aa61ff);">
+                        <span class="icon">☁️</span> サーバーで実行
+                    </button>
+                    <button id="btn-cancel-export" class="btn-secondary">キャンセル</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/interpolation.js"></script>
+    <script type="module" src="js/keyframe-manager.js"></script>
+    <script type="module" src="js/cesium-manager.js"></script>
+    <script type="module" src="js/timeline-editor.js"></script>
+    <script type="module" src="js/property-panel.js"></script>
+    <script type="module" src="js/animation-controller.js"></script>
+    <script type="module" src="js/video-exporter.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
