@@ -19,7 +19,10 @@ export class AnimationController {
             'pause': [],
             'stop': [],
             'timeUpdate': [],
-            'frameUpdate': []
+            'frameUpdate': [],
+
+'finished': []
+
         };
     }
 
@@ -85,15 +88,17 @@ export class AnimationController {
 
             // Check if reached end
             if (this.currentTime >= this.duration) {
-                if (this.loop) {
-                    this.currentTime = 0;
-                } else {
-                    this.currentTime = this.duration;
-                    this.pause();
-                    this.emit('timeUpdate', { time: this.currentTime });
-                    return;
-                }
-            }
+    if (this.loop) {
+        this.currentTime = 0;
+    } else {
+        this.currentTime = this.duration;
+        this.pause();
+        this.emit('timeUpdate', { time: this.currentTime });
+        this.emit('finished');   // ← 追加
+        return;
+    }
+}
+
 
             // Update camera and timeline
             this.updateCamera();
@@ -124,6 +129,11 @@ export class AnimationController {
         const frameTime = 1 / this.fps;
         this.seekTo(this.currentTime + frameTime);
     }
+
+playFromStart() {
+    this.stop();
+    this.play();
+}
 
     stepBackward() {
         const frameTime = 1 / this.fps;

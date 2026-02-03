@@ -69,6 +69,9 @@ class App {
 
             console.log('Application initialized successfully');
 
+this.setupFullscreenPreview();
+
+
         } catch (error) {
             console.error('Initialization error:', error);
 
@@ -130,6 +133,53 @@ class App {
 
         document.body.appendChild(errorDiv);
     }
+
+setupFullscreenPreview() {
+    const fullscreenBtn = document.getElementById("btn-fullscreen");
+    const cesiumContainer = document.getElementById("cesium-container");
+
+    if (!fullscreenBtn || !cesiumContainer) return;
+
+    let fullscreenActive = false;
+
+    fullscreenBtn.addEventListener("click", async () => {
+    if (!document.fullscreenElement) {
+        await cesiumContainer.requestFullscreen();
+    }
+
+    document.body.classList.add("fullscreen-preview");
+    fullscreenActive = true;
+
+    // 8秒待ってからアニメーション開始
+    setTimeout(() => {
+        this.animationController.playFromStart();
+    }, 8000);
+});
+
+
+    cesiumContainer.addEventListener("click", () => {
+        if (!fullscreenActive) return;
+        this.animationController.playFromStart();
+    });
+
+    this.animationController.on("finished", () => {
+        if (!fullscreenActive) return;
+
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        document.body.classList.remove("fullscreen-preview");
+        fullscreenActive = false;
+    });
+
+    document.addEventListener("fullscreenchange", () => {
+        if (!document.fullscreenElement) {
+            document.body.classList.remove("fullscreen-preview");
+            fullscreenActive = false;
+        }
+    });
+}
+
 
     setupControls() {
         // Playback controls
@@ -401,3 +451,4 @@ if (document.readyState === 'loading') {
 } else {
     window.app = new App();
 }
+
